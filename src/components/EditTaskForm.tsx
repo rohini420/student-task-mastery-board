@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -7,18 +8,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Task } from '@/pages/Index';
 
-interface AddTaskFormProps {
-  onAddTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subTasks'>) => void;
+interface EditTaskFormProps {
+  task: Task;
+  onEditTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subTasks'>) => void;
   onCancel: () => void;
 }
 
-const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
+const EditTaskForm: React.FC<EditTaskFormProps> = ({ task, onEditTask, onCancel }) => {
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    subject: '',
-    priority: 'medium' as 'low' | 'medium' | 'high',
-    dueDate: '',
+    title: task.title,
+    description: task.description,
+    subject: task.subject,
+    priority: task.priority as 'low' | 'medium' | 'high',
+    dueDate: task.dueDate,
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -27,14 +29,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
       return;
     }
     
-    onAddTask(formData);
-    setFormData({
-      title: '',
-      description: '',
-      subject: '',
-      priority: 'medium',
-      dueDate: '',
-    });
+    onEditTask(formData);
   };
 
   const handleChange = (field: string, value: string) => {
@@ -43,16 +38,16 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
 
   return (
     <Card className="p-6 bg-white/90 backdrop-blur-sm border-0 shadow-lg">
-      <h2 className="text-xl font-semibold mb-4 text-gray-900">Add New Task</h2>
+      <h2 className="text-xl font-semibold mb-4 text-gray-900">Edit Task</h2>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="title" className="text-sm font-medium text-gray-700">
+            <Label htmlFor="edit-title" className="text-sm font-medium text-gray-700">
               Task Title *
             </Label>
             <Input
-              id="title"
+              id="edit-title"
               type="text"
               value={formData.title}
               onChange={(e) => handleChange('title', e.target.value)}
@@ -63,11 +58,11 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
           </div>
 
           <div>
-            <Label htmlFor="subject" className="text-sm font-medium text-gray-700">
+            <Label htmlFor="edit-subject" className="text-sm font-medium text-gray-700">
               Subject/Course *
             </Label>
             <Input
-              id="subject"
+              id="edit-subject"
               type="text"
               value={formData.subject}
               onChange={(e) => handleChange('subject', e.target.value)}
@@ -79,11 +74,11 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
         </div>
 
         <div>
-          <Label htmlFor="description" className="text-sm font-medium text-gray-700">
+          <Label htmlFor="edit-description" className="text-sm font-medium text-gray-700">
             Description
           </Label>
           <Textarea
-            id="description"
+            id="edit-description"
             value={formData.description}
             onChange={(e) => handleChange('description', e.target.value)}
             placeholder="Additional details about the task..."
@@ -113,11 +108,11 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
           </div>
 
           <div>
-            <Label htmlFor="dueDate" className="text-sm font-medium text-gray-700">
+            <Label htmlFor="edit-dueDate" className="text-sm font-medium text-gray-700">
               Due Date *
             </Label>
             <Input
-              id="dueDate"
+              id="edit-dueDate"
               type="date"
               value={formData.dueDate}
               onChange={(e) => handleChange('dueDate', e.target.value)}
@@ -130,9 +125,9 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
         <div className="flex gap-3 pt-4">
           <Button
             type="submit"
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white"
           >
-            Add Task
+            Update Task
           </Button>
           <Button
             type="button"
@@ -147,4 +142,4 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
   );
 };
 
-export default AddTaskForm;
+export default EditTaskForm;

@@ -1,18 +1,34 @@
 
-import React from 'react';
-import { CheckCircle2, Circle, Trash2, Calendar, AlertCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Circle, Trash2, Calendar, AlertCircle, Edit, Plus } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Task } from '@/pages/Index';
+import { Input } from '@/components/ui/input';
+import { Task, SubTask } from '@/pages/Index';
 
 interface TaskItemProps {
   task: Task;
   onToggle: (taskId: string) => void;
   onDelete: (taskId: string) => void;
+  onEdit: (task: Task) => void;
+  onAddSubTask: (taskId: string, subTaskTitle: string) => void;
+  onToggleSubTask: (taskId: string, subTaskId: string) => void;
+  onDeleteSubTask: (taskId: string, subTaskId: string) => void;
 }
 
-const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
+const TaskItem: React.FC<TaskItemProps> = ({ 
+  task, 
+  onToggle, 
+  onDelete, 
+  onEdit,
+  onAddSubTask,
+  onToggleSubTask,
+  onDeleteSubTask
+}) => {
+  const [showSubTaskForm, setShowSubTaskForm] = useState(false);
+  const [newSubTaskTitle, setNewSubTaskTitle] = useState('');
+  
   const isOverdue = new Date(task.dueDate) < new Date() && !task.completed;
   const isPriorityHigh = task.priority === 'high';
   
@@ -20,6 +36,18 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
     low: 'bg-green-100 text-green-800',
     medium: 'bg-yellow-100 text-yellow-800',
     high: 'bg-red-100 text-red-800'
+  };
+
+  const completedSubTasks = task.subTasks.filter(subTask => subTask.completed).length;
+  const totalSubTasks = task.subTasks.length;
+
+  const handleAddSubTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newSubTaskTitle.trim()) {
+      onAddSubTask(task.id, newSubTaskTitle.trim());
+      setNewSubTaskTitle('');
+      setShowSubTaskForm(false);
+    }
   };
 
   return (
@@ -57,6 +85,19 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
                   {task.description}
                 </p>
               )}
+              {totalSubTasks > 0 && (
+                <div className="mt-2">
+                  <span className="text-xs text-gray-500">
+                    Subtasks: {completedSubTasks}/{totalSubTasks} completed
+                  </span>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
+                    <div 
+                      className="bg-indigo-600 h-1.5 rounded-full transition-all duration-300" 
+                      style={{ width: `${totalSubTasks > 0 ? (completedSubTasks / totalSubTasks) * 100 : 0}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
             </div>
             
             <div className="flex items-center gap-2">
@@ -68,6 +109,67 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
               </Badge>
             </div>
           </div>
+
+          {/* Sub Tasks */}
+          {task.subTasks.length > 0 && (
+            <div className="mb-4 space-y-2">
+              {task.subTasks.map(subTask => (
+                <div key={subTask.id} className="flex items-center gap-2 ml-4 p-2 bg-gray-50 rounded">
+                  <button
+                    onClick={() => onToggleSubTask(task.id, subTask.id)}
+                    className="transition-colors duration-200"
+                  >
+                    {subTask.completed ? (
+                      <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <Circle className="w-4 h-4 text-gray-400 hover:text-indigo-600" />
+                    )}
+                  </button>
+                  <span className={`text-sm flex-1 ${
+                    subTask.completed ? 'line-through text-gray-500' : 'text-gray-700'
+                  }`}>
+                    {subTask.title}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onDeleteSubTask(task.id, subTask.id)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 h-6 w-6 p-0"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add Sub Task Form */}
+          {showSubTaskForm && (
+            <form onSubmit={handleAddSubTask} className="mb-4 ml-4">
+              <div className="flex gap-2">
+                <Input
+                  type="text"
+                  value={newSubTaskTitle}
+                  onChange={(e) => setNewSubTaskTitle(e.target.value)}
+                  placeholder="Enter subtask..."
+                  className="text-sm"
+                  autoFocus
+                />
+                <Button type="submit" size="sm">Add</Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setShowSubTaskForm(false);
+                    setNewSubTaskTitle('');
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </form>
+          )}
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4 text-sm text-gray-500">
@@ -82,14 +184,32 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onToggle, onDelete }) => {
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onDelete(task.id)}
-              className="text-red-500 hover:text-red-700 hover:bg-red-50"
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowSubTaskForm(true)}
+                className="text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onEdit(task)}
+                className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onDelete(task.id)}
+                className="text-red-500 hover:text-red-700 hover:bg-red-50"
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
