@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, BookOpen, Flame, Target } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -78,13 +77,18 @@ const Index = () => {
            completedDate.getFullYear() === currentDate.getFullYear();
   }).length;
 
-  const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subTasks'>) => {
+  const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subTasks'> & { subTasks?: Omit<SubTask, 'id'>[] }) => {
+    const subTasksWithIds = (taskData.subTasks || []).map(subTask => ({
+      ...subTask,
+      id: Date.now().toString() + Math.random().toString()
+    }));
+
     const newTask: Task = {
       ...taskData,
       id: Date.now().toString(),
       completed: false,
       createdAt: new Date().toISOString(),
-      subTasks: [],
+      subTasks: subTasksWithIds,
     };
     setTasks(prev => [newTask, ...prev]);
     setShowAddForm(false);
@@ -94,7 +98,7 @@ const Index = () => {
     });
   };
 
-  const editTask = (taskId: string, updatedTask: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subTasks'>) => {
+  const editTask = (taskId: string, updatedTask: Omit<Task, 'id' | 'completed' | 'createdAt'>) => {
     setTasks(prev => 
       prev.map(task => 
         task.id === taskId 

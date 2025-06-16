@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -5,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Task } from '@/pages/Index';
+import { Plus, Trash2 } from 'lucide-react';
+import { Task, SubTask } from '@/pages/Index';
 
 interface AddTaskFormProps {
-  onAddTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subTasks'>) => void;
+  onAddTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subTasks'> & { subTasks: Omit<SubTask, 'id'>[] }) => void;
   onCancel: () => void;
 }
 
@@ -21,13 +23,16 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
     dueDate: '',
   });
 
+  const [subTasks, setSubTasks] = useState<Omit<SubTask, 'id'>[]>([]);
+  const [newSubTask, setNewSubTask] = useState('');
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title.trim() || !formData.subject.trim() || !formData.dueDate) {
       return;
     }
     
-    onAddTask(formData);
+    onAddTask({ ...formData, subTasks });
     setFormData({
       title: '',
       description: '',
@@ -35,10 +40,28 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
       priority: 'medium',
       dueDate: '',
     });
+    setSubTasks([]);
   };
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const addSubTask = () => {
+    if (newSubTask.trim()) {
+      setSubTasks(prev => [...prev, { title: newSubTask.trim(), completed: false }]);
+      setNewSubTask('');
+    }
+  };
+
+  const removeSubTask = (index: number) => {
+    setSubTasks(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateSubTask = (index: number, newTitle: string) => {
+    setSubTasks(prev => prev.map((subTask, i) => 
+      i === index ? { ...subTask, title: newTitle } : subTask
+    ));
   };
 
   return (
@@ -125,6 +148,53 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
               required
             />
           </div>
+        </div>
+
+        {/* Subtasks Section */}
+        <div>
+          <Label className="text-sm font-medium text-gray-700 mb-2 block">
+            Subtasks
+          </Label>
+          
+          {/* Add Subtask Input */}
+          <div className="flex gap-2 mb-3">
+            <Input
+              type="text"
+              value={newSubTask}
+              onChange={(e) => setNewSubTask(e.target.value)}
+              placeholder="Add a subtask..."
+              className="flex-1"
+              onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSubTask())}
+            />
+            <Button type="button" onClick={addSubTask} size="sm">
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Subtasks List */}
+          {subTasks.length > 0 && (
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {subTasks.map((subTask, index) => (
+                <div key={index} className="flex items-center gap-2 p-2 bg-gray-50 rounded">
+                  <Input
+                    type="text"
+                    value={subTask.title}
+                    onChange={(e) => updateSubTask(index, e.target.value)}
+                    className="flex-1 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeSubTask(index)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="flex gap-3 pt-4">
