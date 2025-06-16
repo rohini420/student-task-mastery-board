@@ -10,7 +10,7 @@ import { Plus, Trash2 } from 'lucide-react';
 import { Task, SubTask } from '@/pages/Index';
 
 interface AddTaskFormProps {
-  onAddTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subTasks'> & { subTasks: Omit<SubTask, 'id'>[] }) => void;
+  onAddTask: (task: Omit<Task, 'id' | 'completed' | 'createdAt'>) => void;
   onCancel: () => void;
 }
 
@@ -32,7 +32,15 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ onAddTask, onCancel }) => {
       return;
     }
     
-    onAddTask({ ...formData, subTasks });
+    onAddTask({ 
+      ...formData, 
+      subTasks: subTasks.map(subTask => ({
+        ...subTask,
+        id: Date.now().toString() + Math.random().toString()
+      }))
+    });
+    
+    // Reset form
     setFormData({
       title: '',
       description: '',

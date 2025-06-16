@@ -77,18 +77,13 @@ const Index = () => {
            completedDate.getFullYear() === currentDate.getFullYear();
   }).length;
 
-  const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt' | 'subTasks'> & { subTasks?: Omit<SubTask, 'id'>[] }) => {
-    const subTasksWithIds = (taskData.subTasks || []).map(subTask => ({
-      ...subTask,
-      id: Date.now().toString() + Math.random().toString()
-    }));
-
+  const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt'>) => {
     const newTask: Task = {
       ...taskData,
       id: Date.now().toString(),
       completed: false,
       createdAt: new Date().toISOString(),
-      subTasks: subTasksWithIds,
+      subTasks: taskData.subTasks || [],
     };
     setTasks(prev => [newTask, ...prev]);
     setShowAddForm(false);
