@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, BookOpen, Flame, Target } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, BookOpen, Flame, Target, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import TaskItem from '@/components/TaskItem';
@@ -7,7 +7,7 @@ import AddTaskForm from '@/components/AddTaskForm';
 import TaskFilter from '@/components/TaskFilter';
 import EditTaskForm from '@/components/EditTaskForm';
 import CelebrationEffect from '@/components/CelebrationEffect';
-import { useToast } from '@/hooks/use-toast';
+import { useTasks } from '@/hooks/useTasks';
 
 export interface SubTask {
   id: string;
@@ -35,156 +35,79 @@ interface MonthlyStats {
 }
 
 const Index = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [filter, setFilter] = useState<'all' | 'pending' | 'completed'>('all');
   const [subjectFilter, setSubjectFilter] = useState<string>('all');
   const [showCelebration, setShowCelebration] = useState(false);
-  const [monthlyGoal, setMonthlyGoal] = useState(20);
-  const [currentStreak, setCurrentStreak] = useState(0);
-  const { toast } = useToast();
 
-  // Load tasks from localStorage on component mount
-  useEffect(() => {
-    const savedTasks = localStorage.getItem('studentTasks');
-    const savedGoal = localStorage.getItem('monthlyGoal');
-    const savedStreak = localStorage.getItem('currentStreak');
-    
-    if (savedTasks) {
-      setTasks(JSON.parse(savedTasks));
-    }
-    if (savedGoal) {
-      setMonthlyGoal(parseInt(savedGoal));
-    }
-    if (savedStreak) {
-      setCurrentStreak(parseInt(savedStreak));
-    }
-  }, []);
+  // Use API layer through custom hook
+  const {
+    tasks,
+    stats,
+    isLoadingTasks,
+    isLoadingStats,
+    addTask: addTaskMutation,
+    updateTask: updateTaskMutation,
+    deleteTask: deleteTaskMutation,
+    addSubTask: addSubTaskMutation,
+    toggleSubTask: toggleSubTaskMutation,
+    deleteSubTask: deleteSubTaskMutation,
+    updateStreak: updateStreakMutation,
+    isAddingTask,
+    isUpdatingTask,
+    isDeletingTask,
+    isUpdatingSubTask,
+  } = useTasks();
 
-  // Save tasks to localStorage whenever tasks change
-  useEffect(() => {
-    localStorage.setItem('studentTasks', JSON.stringify(tasks));
-  }, [tasks]);
-
-  // Calculate monthly stats
-  const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
-  const thisMonthCompletedTasks = tasks.filter(task => {
-    const completedDate = new Date(task.createdAt);
-    const currentDate = new Date();
-    return task.completed && 
-           completedDate.getMonth() === currentDate.getMonth() && 
-           completedDate.getFullYear() === currentDate.getFullYear();
-  }).length;
-
-  const addTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: Date.now().toString(),
-      completed: false,
-      createdAt: new Date().toISOString(),
-      subTasks: taskData.subTasks || [],
-    };
-    setTasks(prev => [newTask, ...prev]);
+  // Handle task operations
+  const handleAddTask = (taskData: Omit<Task, 'id' | 'completed' | 'createdAt'>) => {
+    addTaskMutation(taskData);
     setShowAddForm(false);
-    toast({
-      title: "Task added successfully!",
-      description: `${taskData.title} has been added to your task list.`,
-    });
   };
 
-  const editTask = (taskId: string, updatedTask: Omit<Task, 'id' | 'completed' | 'createdAt'>) => {
-    setTasks(prev => 
-      prev.map(task => 
-        task.id === taskId 
-          ? { ...task, ...updatedTask }
-          : task
-      )
-    );
+  const handleEditTask = (taskId: string, updatedTask: Omit<Task, 'id' | 'completed' | 'createdAt'>) => {
+    updateTaskMutation({ taskId, taskData: updatedTask });
     setEditingTask(null);
-    toast({
-      title: "Task updated successfully!",
-      description: `${updatedTask.title} has been updated.`,
-    });
   };
 
-  const toggleTask = (taskId: string) => {
-    const task = tasks.find(t => t.id === taskId);
+  const handleToggleTask = (taskId: string) => {
+    const task = tasks?.find(t => t.id === taskId);
     const wasCompleted = task?.completed;
     
-    setTasks(prev => 
-      prev.map(task => 
-        task.id === taskId 
-          ? { ...task, completed: !task.completed }
-          : task
-      )
-    );
+    updateTaskMutation({ 
+      taskId, 
+      taskData: { completed: !task?.completed } 
+    });
 
     // Show celebration if task was just completed
     if (!wasCompleted) {
       setShowCelebration(true);
       // Update streak
-      setCurrentStreak(prev => {
-        const newStreak = prev + 1;
-        localStorage.setItem('currentStreak', newStreak.toString());
-        return newStreak;
-      });
+      const currentStreak = stats?.currentStreak || 0;
+      updateStreakMutation(currentStreak + 1);
       setTimeout(() => setShowCelebration(false), 3000);
     }
   };
 
-  const deleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
-    toast({
-      title: "Task deleted",
-      description: "The task has been removed from your list.",
-    });
+  const handleDeleteTask = (taskId: string) => {
+    deleteTaskMutation(taskId);
   };
 
-  const addSubTask = (taskId: string, subTaskTitle: string) => {
-    const newSubTask: SubTask = {
-      id: Date.now().toString(),
-      title: subTaskTitle,
-      completed: false,
-    };
-    
-    setTasks(prev => 
-      prev.map(task => 
-        task.id === taskId 
-          ? { ...task, subTasks: [...task.subTasks, newSubTask] }
-          : task
-      )
-    );
+  const handleAddSubTask = (taskId: string, subTaskTitle: string) => {
+    addSubTaskMutation({ taskId, subTaskTitle });
   };
 
-  const toggleSubTask = (taskId: string, subTaskId: string) => {
-    setTasks(prev => 
-      prev.map(task => 
-        task.id === taskId 
-          ? {
-              ...task,
-              subTasks: task.subTasks.map(subTask =>
-                subTask.id === subTaskId
-                  ? { ...subTask, completed: !subTask.completed }
-                  : subTask
-              )
-            }
-          : task
-      )
-    );
+  const handleToggleSubTask = (taskId: string, subTaskId: string) => {
+    toggleSubTaskMutation({ taskId, subTaskId });
   };
 
-  const deleteSubTask = (taskId: string, subTaskId: string) => {
-    setTasks(prev => 
-      prev.map(task => 
-        task.id === taskId 
-          ? { ...task, subTasks: task.subTasks.filter(subTask => subTask.id !== subTaskId) }
-          : task
-      )
-    );
+  const handleDeleteSubTask = (taskId: string, subTaskId: string) => {
+    deleteSubTaskMutation({ taskId, subTaskId });
   };
 
-  const filteredTasks = tasks.filter(task => {
+  // Filter tasks
+  const filteredTasks = (tasks || []).filter(task => {
     const statusMatch = filter === 'all' || 
       (filter === 'pending' && !task.completed) ||
       (filter === 'completed' && task.completed);
@@ -194,9 +117,8 @@ const Index = () => {
     return statusMatch && subjectMatch;
   });
 
-  const subjects = [...new Set(tasks.map(task => task.subject))];
-  const completedCount = tasks.filter(task => task.completed).length;
-  const pendingCount = tasks.filter(task => !task.completed).length;
+  const subjects = [...new Set((tasks || []).map(task => task.subject))];
+  const currentMonth = new Date().toLocaleString('default', { month: 'long', year: 'numeric' });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
@@ -220,8 +142,14 @@ const Index = () => {
             <div className="flex items-center justify-center">
               <Flame className="w-8 h-8 text-orange-600 mr-3" />
               <div className="text-center">
-                <div className="text-3xl font-bold text-orange-600">{currentStreak}</div>
-                <div className="text-gray-700">Current Streak</div>
+                {isLoadingStats ? (
+                  <Loader2 className="w-8 h-8 text-orange-600 animate-spin mx-auto" />
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-orange-600">{stats?.currentStreak || 0}</div>
+                    <div className="text-gray-700">Current Streak</div>
+                  </>
+                )}
               </div>
             </div>
           </Card>
@@ -229,8 +157,14 @@ const Index = () => {
             <div className="flex items-center justify-center">
               <Target className="w-8 h-8 text-green-600 mr-3" />
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">{thisMonthCompletedTasks}/{monthlyGoal}</div>
-                <div className="text-gray-700">{currentMonth} Goal</div>
+                {isLoadingStats ? (
+                  <Loader2 className="w-8 h-8 text-green-600 animate-spin mx-auto" />
+                ) : (
+                  <>
+                    <div className="text-3xl font-bold text-green-600">{stats?.thisMonthCompleted || 0}/{stats?.monthlyGoal || 20}</div>
+                    <div className="text-gray-700">{currentMonth} Goal</div>
+                  </>
+                )}
               </div>
             </div>
           </Card>
@@ -240,19 +174,31 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <div className="text-center">
-              <div className="text-3xl font-bold text-indigo-600 mb-2">{tasks.length}</div>
+              {isLoadingStats ? (
+                <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mx-auto mb-2" />
+              ) : (
+                <div className="text-3xl font-bold text-indigo-600 mb-2">{stats?.totalTasks || 0}</div>
+              )}
               <div className="text-gray-600">Total Tasks</div>
             </div>
           </Card>
           <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600 mb-2">{pendingCount}</div>
+              {isLoadingStats ? (
+                <Loader2 className="w-8 h-8 text-orange-600 animate-spin mx-auto mb-2" />
+              ) : (
+                <div className="text-3xl font-bold text-orange-600 mb-2">{stats?.pendingTasks || 0}</div>
+              )}
               <div className="text-gray-600">Pending</div>
             </div>
           </Card>
           <Card className="p-6 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
             <div className="text-center">
-              <div className="text-3xl font-bold text-green-600 mb-2">{completedCount}</div>
+              {isLoadingStats ? (
+                <Loader2 className="w-8 h-8 text-green-600 animate-spin mx-auto mb-2" />
+              ) : (
+                <div className="text-3xl font-bold text-green-600 mb-2">{stats?.completedTasks || 0}</div>
+              )}
               <div className="text-gray-600">Completed</div>
             </div>
           </Card>
@@ -281,7 +227,7 @@ const Index = () => {
         {showAddForm && (
           <div className="mb-8">
             <AddTaskForm
-              onAddTask={addTask}
+              onAddTask={handleAddTask}
               onCancel={() => setShowAddForm(false)}
             />
           </div>
@@ -292,7 +238,7 @@ const Index = () => {
           <div className="mb-8">
             <EditTaskForm
               task={editingTask}
-              onEditTask={(updatedTask) => editTask(editingTask.id, updatedTask)}
+              onEditTask={(updatedTask) => handleEditTask(editingTask.id, updatedTask)}
               onCancel={() => setEditingTask(null)}
             />
           </div>
@@ -300,14 +246,19 @@ const Index = () => {
 
         {/* Tasks List */}
         <div className="space-y-4">
-          {filteredTasks.length === 0 ? (
+          {isLoadingTasks ? (
+            <Card className="p-12 text-center bg-white/80 backdrop-blur-sm border-0 shadow-lg">
+              <Loader2 className="w-12 h-12 text-indigo-600 animate-spin mx-auto mb-4" />
+              <p className="text-gray-600">Loading your tasks...</p>
+            </Card>
+          ) : filteredTasks.length === 0 ? (
             <Card className="p-12 text-center bg-white/80 backdrop-blur-sm border-0 shadow-lg">
               <BookOpen className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                {tasks.length === 0 ? "No tasks yet" : "No tasks match your filters"}
+                {(tasks || []).length === 0 ? "No tasks yet" : "No tasks match your filters"}
               </h3>
               <p className="text-gray-500">
-                {tasks.length === 0 
+                {(tasks || []).length === 0 
                   ? "Add your first task to get started with your academic journey!"
                   : "Try adjusting your filters to see more tasks."
                 }
@@ -318,12 +269,12 @@ const Index = () => {
               <TaskItem
                 key={task.id}
                 task={task}
-                onToggle={toggleTask}
-                onDelete={deleteTask}
+                onToggle={handleToggleTask}
+                onDelete={handleDeleteTask}
                 onEdit={setEditingTask}
-                onAddSubTask={addSubTask}
-                onToggleSubTask={toggleSubTask}
-                onDeleteSubTask={deleteSubTask}
+                onAddSubTask={handleAddSubTask}
+                onToggleSubTask={handleToggleSubTask}
+                onDeleteSubTask={handleDeleteSubTask}
               />
             ))
           )}
